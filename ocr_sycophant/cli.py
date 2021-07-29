@@ -13,7 +13,7 @@ def cli():
 
 @cli.command("predict")
 @click.argument("model", type=click.Path(exists=True, file_okay=True, dir_okay=False))
-@click.argument("files", type=click.File(), nargs=-1)
+@click.argument("files", type=click.Path(exists=True, file_okay=True, dir_okay=False), nargs=-1)
 @click.option("--verbose", is_flag=True, default=False)
 @click.option("--logs", default=None, type=click.File(mode="w"))
 def predict(model, files, verbose, logs):
@@ -33,10 +33,11 @@ def predict(model, files, verbose, logs):
         writer.writerow(["path", "score"])
 
     for file in files:
-        sentence, clean_score = model.predict_file(file, verbose=verbose)
-        click.secho(click.style(f"---> {file.name} has {clean_score*100:.2f}% clean lines", fg=color(clean_score)))
-        if logs:
-            writer.writerow([file.name, f"{clean_score*100:.2f}"])
+        with open(file) as f:
+            sentence, clean_score = model.predict_file(f, verbose=verbose)
+            click.secho(click.style(f"---> {file} has {clean_score*100:.2f}% clean lines", fg=color(clean_score)))
+            if logs:
+                writer.writerow([file, f"{clean_score*100:.2f}"])
 
 
 
