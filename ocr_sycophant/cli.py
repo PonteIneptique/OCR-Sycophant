@@ -1,5 +1,7 @@
 import click
 import csv
+import os
+import glob
 
 from ocr_sycophant.model import NoiseModel
 from ocr_sycophant.encoder import Encoder
@@ -13,14 +15,22 @@ def cli():
 
 @cli.command("predict")
 @click.argument("model", type=click.Path(exists=True, file_okay=True, dir_okay=False))
-@click.argument("files", type=click.Path(exists=True, file_okay=True, dir_okay=False), nargs=-1)
+@click.argument("files", type=click.Path(exists=True, file_okay=True, dir_okay=True), nargs=-1)
 @click.option("--verbose", is_flag=True, default=False)
 @click.option("--logs", default=None, type=click.File(mode="w"))
 def predict(model, files, verbose, logs):
+
+    def gen(f):
+        for file in f:
+            if os.path.isdir(file):
+                yield from glob.glob(os.path.join(file, "**", "*.txt"), recursive=True)
+            else:
+                yield file
+
     click.secho(click.style(f"Loading model at {model}"))
     model = NoiseModel.load(model)
     click.secho(click.style(f"-> Loaded", fg="green"))
-    click.secho(click.style(f"Testing {len(files)} files"))
+    click.secho(click.style(f"Testing {len(list(gen(files)))} files"))
 
     def color(score):
         if score >= 0.80:
@@ -31,8 +41,7 @@ def predict(model, files, verbose, logs):
     if logs:
         writer = csv.writer(logs)
         writer.writerow(["path", "score"])
-
-    for file in files:
+    for file in gen(files):
         with open(file) as f:
             sentence, clean_score = model.predict_file(f, verbose=verbose)
             click.secho(click.style(f"---> {file} has {clean_score*100:.2f}% clean lines", fg=color(clean_score)))
