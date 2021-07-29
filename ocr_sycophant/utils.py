@@ -3,7 +3,7 @@ import csv
 import random
 
 if TYPE_CHECKING:
-    import ocr_noise_eval.encoder as enc
+    import ocr_sycophant.encoder as enc
 
 
 def _read_file(path):

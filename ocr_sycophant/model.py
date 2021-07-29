@@ -11,7 +11,7 @@ from sklearn.linear_model._base import LinearClassifierMixin
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 
-from ocr_noise_eval.encoder import Encoder
+from ocr_sycophant.encoder import Encoder
 
 
 GT_Tuple = Tuple[int, str]
@@ -130,7 +130,7 @@ class NoiseModel:
 
 if __name__ == "__main__":
     model = NoiseModel(encoder=Encoder())
-    from ocr_noise_eval.utils import get_dataset
+    from ocr_sycophant.utils import get_dataset
     (train, train_enc), (test, test_enc) = get_dataset("dataset.csv", encoder=model.encoder)
 
     model.fit(train_enc)

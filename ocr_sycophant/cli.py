@@ -1,9 +1,9 @@
 import click
 import csv
 
-from ocr_noise_eval.model import NoiseModel
-from ocr_noise_eval.encoder import Encoder
-from ocr_noise_eval.utils import get_dataset
+from ocr_sycophant.model import NoiseModel
+from ocr_sycophant.encoder import Encoder
+from ocr_sycophant.utils import get_dataset
 
 
 @click.group()

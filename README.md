@@ -1,1 +1,1 @@
-# ocr-noise-eval
+# OCR Sycophant
