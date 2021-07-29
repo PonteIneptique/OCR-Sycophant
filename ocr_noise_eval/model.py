@@ -1,35 +1,30 @@
 from typing import List, Tuple, Dict, Optional, Union, Iterator, TextIO
 from collections import Counter
 
+import joblib
 import numpy as np
 import tqdm
 
 from sklearn.base import ClassifierMixin
 from sklearn.linear_model import LogisticRegression
-from sklearn.linear_model.base import LinearClassifierMixin
+from sklearn.linear_model._base import LinearClassifierMixin
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 
-from .encoder import Encoder
+from ocr_noise_eval.encoder import Encoder
 
-from IPython.display import display, HTML
-
-#enc = Encoder()
-#enc.fit(train)
-#train_enc = list(enc.encode(train))
-#dev_enc = list(enc.encode(dev))
-#test_enc = list(enc.encode(test))
 
 GT_Tuple = Tuple[int, str]
 
 
 class NoiseModel:
-    def __init__(self, encoder: Encoder, models: List[LinearClassifierMixin]):
+    def __init__(self, encoder: Encoder, models: List[LinearClassifierMixin] = []):
         self.encoder: Encoder = encoder
         self.models: List[LinearClassifierMixin] = models
         if not models:
             # Initiate with default known working models
-            self.models = [LogisticRegression(random_state=0), GaussianNB(), RandomForestClassifier()]
+            self.models = [
+                LogisticRegression(random_state=0), GaussianNB(), RandomForestClassifier()]
 
     def fit(self, data: List[Tuple[int, Dict[int, float]]]):
         """ Uses the output of encoder.gt_encode()
@@ -37,10 +32,10 @@ class NoiseModel:
         :param data:
         :return:
         """
-        for model in self.models:
-            model.fit(*self.get_arrays(data, encoder=self.encoder))
+        for model in tqdm.tqdm(self.models):
+            model.fit(*data)
 
-    def test(self, x, y, raw, name):
+    def test(self, x, y, raw):
         score = []
         bads = {0: [], 1: []}
 
@@ -51,22 +46,14 @@ class NoiseModel:
                 bads[gt].append(inp[1])
 
         score = score.count(1) / len(score)
-        return {name: score}, bads
+        return {type(self).__name__: score}, bads
 
     @staticmethod
-    def get_arrays(data: List[Tuple[int, Dict[int, float]]], encoder: Encoder) -> Tuple[List[np.array], np.array]:
-        x, y = [], []
-        for cls, mat in data:
-            x.append(np.array([mat.get(key, .0) for key in range(encoder.size())]))
-            y.append(cls)
-        return x, np.array(y)
-
-    @staticmethod
-    def test_algo(
-            model: LinearClassifierMixin,
-            x: List[np.array], y: np.array,
-            raw: List[GT_Tuple],
-            name: Optional[str] = None
+    def _test_algo(
+        model: LinearClassifierMixin,
+        x: List[np.array], y: np.array,
+        raw: List[GT_Tuple],
+        name: Optional[str] = None
     ):
         score = model.score(x, y)
         bads = {0: [], 1: []}
@@ -101,6 +88,13 @@ class NoiseModel:
                      batch_size: int = 16,
                      verbose: bool = True
     ) -> Tuple[List[Tuple[str, int]], float]:
+        """
+
+        :param f:
+        :param batch_size:
+        :param verbose:
+        :return: Lines that needs to be kept, CLeanness score (The higher the best)
+        """
         output = []
 
         def to_output(batch):
@@ -126,12 +120,34 @@ class NoiseModel:
 
         return output, sum([1 for _, pred in output if pred == 0]) / max(len(output), 1)
 
+    def save(self, path):
+        joblib.dump(self, path)
+
+    @classmethod
+    def load(cls, path):
+        return joblib.load(path)
+
 
 if __name__ == "__main__":
+    model = NoiseModel(encoder=Encoder())
+    from ocr_noise_eval.utils import get_dataset
+    (train, train_enc), (test, test_enc) = get_dataset("dataset.csv", encoder=model.encoder)
+
+    model.fit(train_enc)
+    print("Fitted")
+    scores, errors = model.test(*test_enc, test)
+    print(scores)
+    print("\n".join(model.errors_to_html(errors, "Multi")))
+
+    model.save("model.saved")
+    model = NoiseModel.load("model.saved")
+    scores, errors = model.test(*test_enc, test)
+    print(scores)
+
     import glob
 
-    for file in glob.glob("raw/archive.org/**/*.txt"):
+    for file in glob.glob("../new-latin-bert/raw/archive.org/**/*.txt"):
         f = open(file)
-        sentences, score = predict_file(f)
+        sentences, score = model.predict_file(f)
         print(file, score)
         f.close()

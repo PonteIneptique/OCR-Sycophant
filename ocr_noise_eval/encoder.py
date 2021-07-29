@@ -3,12 +3,17 @@ from collections import Counter
 import numpy as np
 import json
 
+
 class Encoder:
     def __init__(self, lower: bool = True, ngrams: int = 2):
         self.vocab: Dict[str, int] = {"[UNK]": 0}
         self.use_ngrams = ngrams
         self.lower = lower
         self._fitted = False
+
+    def __repr__(self):
+        return f"<Encoder fitted={self._fitted} vocab_size={len(self.vocab)} lower={self.lower} " \
+               f"ngrams={self.use_ngrams}/>"
 
     def toi(self, token: str) -> int:
         """
@@ -29,7 +34,7 @@ class Encoder:
             self.vocab[token] = len(self.vocab)
         return self.vocab[token]
 
-    def featurize_gt(self, line: Tuple[int, str]) -> Tuple[Optional[int], Dict[int, float]]:
+    def featurize_gt(self, line: Tuple[int, str]) -> Tuple[Dict[int, float], int]:
         """
 
         :param line:
@@ -45,8 +50,8 @@ class Encoder:
         cls = None
         if isinstance(line, tuple):
             cls, line = line
-        matrice = self._line_to_counter(line)
-        return cls, matrice
+        matrice = self.line_to_array(line)
+        return matrice, cls
 
     def _line_to_counter(self, line: str) -> Dict[int, float]:
         if self.lower:
@@ -65,9 +70,13 @@ class Encoder:
         return np.array([mat.get(key, .0) for key in range(self.size())])
 
     def encode_gt(self, data: Iterator[Tuple[int, str]]) -> Iterator[Tuple[int, Dict[int, float]]]:
+        X, Y = [], []
         for line in data:
-            if len(line[1]):
-                yield self.featurize_gt(line)
+            if line:
+                x, y = self.featurize_gt(line)
+                X.append(x)
+                Y.append(y)
+        return X, np.array(Y)
 
     def fit(self, data: Iterator[Tuple[int, str]], keep_min: int = 10, limit=300) -> None:
         cnts = Counter()
