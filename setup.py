@@ -19,7 +19,7 @@ DESCRIPTION = "Simple models and wrapper detector for badly OCRed documents"
 URL = 'https://github.com/ponteineptique/OCR-Sycophant'
 AUTHOR = 'Thibault Clérice'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = "0.0.3"
+VERSION = "0.0.4"
 
 # What packages are required for this module to be executed?
 

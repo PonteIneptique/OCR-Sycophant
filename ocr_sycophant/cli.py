@@ -17,7 +17,12 @@ def cli():
 
 def _predict(args):
     model, file = args
-    sentence, clean_score = model.predict_filepath(file, batch_size=16, verbose=False)
+    try:
+        sentence, clean_score = model.predict_filepath(file, batch_size=16, verbose=False)
+    except Exception:
+        print(Exception)
+        print(file)
+        return file, .0
     return file, clean_score
 
 
