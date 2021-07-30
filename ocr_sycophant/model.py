@@ -83,10 +83,16 @@ class NoiseModel:
             pred, _ = Counter(preds).most_common(1)[0]
             yield sent, pred
 
-    def predict_file(self,
+    def predict_filepath(self, filepath: str, **kwargs):
+        f = open(filepath)
+        out = self.predict_file_wrapper(f, **kwargs)
+        f.close()
+        return out
+
+    def predict_file_wrapper(self,
                      f: TextIO,
                      batch_size: int = 16,
-                     verbose: bool = True
+                     verbose: bool = False
     ) -> Tuple[List[Tuple[str, int]], float]:
         """
 

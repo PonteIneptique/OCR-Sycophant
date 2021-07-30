@@ -2,6 +2,8 @@ import click
 import csv
 import os
 import glob
+from multiprocessing import Pool
+
 
 from ocr_sycophant.model import NoiseModel
 from ocr_sycophant.encoder import Encoder
@@ -13,12 +15,19 @@ def cli():
     """OCR Simple Noise Evaluator"""
 
 
+def _predict(args):
+    model, file = args
+    sentence, clean_score = model.predict_filepath(file, batch_size=16, verbose=False)
+    return file, clean_score
+
+
 @cli.command("predict")
 @click.argument("model", type=click.Path(exists=True, file_okay=True, dir_okay=False))
 @click.argument("files", type=click.Path(exists=True, file_okay=True, dir_okay=True), nargs=-1)
 @click.option("--verbose", is_flag=True, default=False)
 @click.option("--logs", default=None, type=click.File(mode="w"))
-def predict(model, files, verbose, logs):
+@click.option("-w", "--workers", default=1, type=int)
+def predict(model, files, verbose, logs, workers):
 
     def gen(f):
         for file in f:
@@ -38,15 +47,21 @@ def predict(model, files, verbose, logs):
         else:
             return "red"
 
+    def gen_with_models(f):
+        for i in gen(f):
+            yield model, i
+
     if logs:
         writer = csv.writer(logs)
         writer.writerow(["path", "score"])
-    for file in gen(files):
-        with open(file) as f:
-            sentence, clean_score = model.predict_file(f, verbose=verbose)
+
+    with Pool(processes=workers) as pool:
+        # print same numbers in arbitrary order
+        for file, clean_score in pool.imap_unordered(_predict, gen_with_models(files)):
             click.secho(click.style(f"---> {file} has {clean_score*100:.2f}% clean lines", fg=color(clean_score)))
             if logs:
                 writer.writerow([file, f"{clean_score*100:.2f}"])
+
 
 
 
